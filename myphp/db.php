@@ -1,5 +1,12 @@
 <?php
-$db = new SQLite3('goals.db');
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$db = new SQLite3('/var/www/html/myphp/goals.db');
+
+if (!$db) {
+    die("DB connection failed");
+}
 
 $db->exec("
 CREATE TABLE IF NOT EXISTS goals (
