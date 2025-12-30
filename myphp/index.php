@@ -1,44 +1,151 @@
 <?php
+// Include the SQLite database connection
 include 'db.php';
-$result = $db->query("SELECT * FROM goals ORDER BY created_at DESC");
+
+// --------------------------
+// Handle Adding a New Goal
+// --------------------------
+if (isset($_POST['add_goal'])) {
+    $goal_name = htmlspecialchars($_POST['goal_name']);
+    $goal_type = $_POST['goal_type'];
+
+    $stmt = $db->prepare("INSERT INTO goals (goal_name, goal_type, status) VALUES (:name, :type, 'Pending')");
+    $stmt->bindValue(':name', $goal_name, SQLITE3_TEXT);
+    $stmt->bindValue(':type', $goal_type, SQLITE3_TEXT);
+    $stmt->execute();
+
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+// --------------------------
+// Handle Marking a Goal Completed / Pending
+// --------------------------
+if (isset($_POST['goal_id'])) {
+    $status = isset($_POST['completed']) ? 'Completed' : 'Pending';
+    $stmt = $db->prepare("UPDATE goals SET status=:status WHERE id=:id");
+    $stmt->bindValue(':status', $status, SQLITE3_TEXT);
+    $stmt->bindValue(':id', $_POST['goal_id'], SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+// --------------------------
+// Handle Deleting a Goal
+// --------------------------
+if (isset($_POST['delete_id'])) {
+    $stmt = $db->prepare("DELETE FROM goals WHERE id=:id");
+    $stmt->bindValue(':id', $_POST['delete_id'], SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+// --------------------------
+// Function to get progress counts safely
+// --------------------------
+function getProgress($db, $type) {
+    $done = 0;
+    $total = 0;
+
+    try {
+        $totalResult = $db->querySingle("SELECT COUNT(*) FROM goals WHERE goal_type='$type'");
+        if ($totalResult !== false) $total = $totalResult;
+
+        $doneResult = $db->querySingle("SELECT COUNT(*) FROM goals WHERE goal_type='$type' AND status='Completed'");
+        if ($doneResult !== false) $done = $doneResult;
+    } catch (Exception $e) {
+        $done = 0;
+        $total = 0;
+    }
+
+    return array($done, $total);
+}
+
+$types = array('Daily', 'Weekly', 'Monthly', 'Yearly');
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
     <title>Goal Tracker</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        form { margin-bottom: 20px; }
+        .progress-section { display: flex; flex-wrap: wrap; gap: 10px; }
+        .progress-card { border: 1px solid #ccc; padding: 10px; width: 200px; border-radius: 5px; }
+        .progress-bar { background: #eee; width: 100%; height: 20px; border-radius: 10px; margin: 5px 0; }
+        .progress-fill { background: #4caf50; height: 100%; border-radius: 10px; }
+        .goal-list { margin-top: 10px; }
+    </style>
 </head>
 <body>
 
-<h1>🎯 Goal Tracker</h1>
+<h1>Goal Tracker</h1>
 
-<form action="add_goal.php" method="POST">
-    <input type="text" name="title" placeholder="Enter your goal" required>
-
+<!-- Add New Goal Form -->
+<h2>Add New Goal</h2>
+<form method="post" action="">
+    <input type="text" name="goal_name" placeholder="Goal Name" required>
     <select name="goal_type">
-        <option>Daily</option>
-        <option>Weekly</option>
-        <option>Monthly</option>
-        <option>Yearly</option>
+        <option value="Daily">Daily</option>
+        <option value="Weekly">Weekly</option>
+        <option value="Monthly">Monthly</option>
+        <option value="Yearly">Yearly</option>
     </select>
-
-    <button type="submit">Add Goal</button>
+    <button type="submit" name="add_goal">Add Goal</button>
 </form>
 
-<h2>Your Goals</h2>
+<!-- Progress Section -->
+<div class="progress-section">
+<?php
+foreach ($types as $type) {
+    $progress = getProgress($db, $type);
+    $done  = $progress[0];
+    $total = $progress[1];
 
-<?php while ($row = $result->fetchArray()): ?>
-    <div class="goal <?= $row['status'] ?>">
-        <strong><?= $row['title'] ?></strong>
-        (<?= $row['goal_type'] ?>)
-        - <?= $row['status'] ?>
+    $percent = ($total > 0) ? round(($done / $total) * 100) : 0;
 
-        <?php if ($row['status'] == 'Pending'): ?>
-            <a href="complete_goal.php?id=<?= $row['id'] ?>">✔</a>
-        <?php endif; ?>
-    </div>
-<?php endwhile; ?>
+    echo '<div class="progress-card">
+        <strong>' . $type . ' Goals</strong>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: ' . $percent . '%;"></div>
+        </div>
+        <small>' . $done . ' / ' . $total . ' completed (' . $percent . '%)</small>
+        </div>';
+}
+?>
+</div>
+
+<!-- Goal Lists with Interaction -->
+<?php
+foreach ($types as $type) {
+    echo "<h3>$type Goals</h3>";
+    echo '<div class="goal-list">';
+    $results = $db->query("SELECT * FROM goals WHERE goal_type='$type'");
+    while ($row = $results->fetchArray(SQLITE3_ASSOC)) {
+        $checked = ($row['status'] == 'Completed') ? 'checked' : '';
+
+        // Checkbox to mark completed/pending
+        echo '<form method="post" style="display:inline;">
+            <input type="hidden" name="goal_id" value="'.$row['id'].'">
+            <input type="checkbox" name="completed" '.$checked.' onchange="this.form.submit()">
+            '.$row['goal_name'].'
+        </form>';
+
+        // Delete button
+        echo '<form method="post" style="display:inline;">
+            <input type="hidden" name="delete_id" value="'.$row['id'].'">
+            <button type="submit">Delete</button>
+        </form><br>';
+    }
+    echo '</div>';
+}
+?>
 
 </body>
 </html>
+

@@ -1,15 +1,15 @@
 body {
     font-family: Arial, sans-serif;
-    background: #f2f2f2;
+    background: #f4f6f8;
     padding: 20px;
 }
 
 h1 {
-    color: #333;
+    margin-bottom: 10px;
 }
 
 form {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 input, select, button {
@@ -17,15 +17,68 @@ input, select, button {
     margin-right: 5px;
 }
 
+.filters a {
+    margin-right: 10px;
+    text-decoration: none;
+    color: #007bff;
+    font-weight: bold;
+}
+
 .goal {
-    background: white;
+    background: #fff;
     padding: 10px;
     margin: 8px 0;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.goal span {
+    color: #666;
+    margin-left: 10px;
+}
+
+.pending {
     border-left: 5px solid orange;
 }
 
-.Completed {
+.completed {
     border-left: 5px solid green;
     opacity: 0.7;
+}
+
+.goal a {
+    margin-left: 10px;
+    text-decoration: none;
+}
+
+
+.progress-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.progress-card {
+    background: #fff;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    background: #e0e0e0;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+
+.progress-fill {
+    background: #28a745;
+    height: 100%;
+    transition: width 0.3s ease;
 }
 
